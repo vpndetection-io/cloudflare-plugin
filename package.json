@@ -1,7 +1,7 @@
 {
     "name": "vpndetection-cloudflare",
     "version": "1.0.0",
-    "description": "Check every visitor at Cloudflare's edge with the VPNDetection API, on any plan, with a Worker you deploy in one click.",
+    "description": "Block VPNs, proxies and Tor at Cloudflare's edge, on any plan, with a Worker that checks each visitor against the VPNDetection API.",
     "private": true,
     "type": "module",
     "license": "MIT",
@@ -23,13 +23,39 @@
             "VPNDETECTION_API_KEY": {
                 "description": "Your VPNDetection API key. Create one for free in the [console](https://app.vpndetection.io)."
             },
+            "BLOCK": {
+                "description": "What to act on, comma-separated: `vpn`, `tor`, `pubproxy`, `resproxy`, `mobproxy`, `dcproxy`, `hosting`, `relay`, `smtp`."
+            },
+            "ACTION": {
+                "description": "What happens to a visitor who matches: `block`, `challenge` (a Turnstile check, which needs `TURNSTILE_SITE_KEY` and the `TURNSTILE_SECRET_KEY` secret) or `log`."
+            },
+            "PROXY_MIN_HITS": {
+                "description": "How many times an address must have been seen in a residential, mobile or datacenter proxy pool before those signals count."
+            },
+            "ALLOW_IPS": {
+                "description": "Addresses and ranges that are never checked, comma-separated, such as `203.0.113.7, 2001:db8::/32`."
+            },
+            "ALLOW_PATHS": {
+                "description": "Path prefixes that are never checked, comma-separated, such as `/webhooks/, /robots.txt`."
+            },
+            "BLOCK_MESSAGE": {
+                "description": "The sentence a blocked visitor reads. Leave it empty for the default."
+            },
+            "TURNSTILE_SITE_KEY": {
+                "description": "Your Turnstile widget's site key, for `ACTION` `challenge`. Leave it empty otherwise."
+            },
+            "FAIL_CLOSED": {
+                "description": "`true` refuses visitors while the API can't be reached. The default, `false`, lets them through."
+            },
             "FORWARD": {
                 "description": "`true` passes each answer to your site in the `X-VPNDetection` request header."
             }
         }
     },
     "dependencies": {
-        "vpndetection": "^5.17.0"
+        "ip-address": "^10.7.6",
+        "vpndetection": "^5.17.0",
+        "zod": "^4.6.7"
     },
     "devDependencies": {
         "@cloudflare/workers-types": "^5.20261114.1",

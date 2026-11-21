@@ -1,3 +1,5 @@
 # Secrets the Worker reads. The Deploy to Cloudflare button asks for each one set here; for local
 # development, copy this file to .dev.vars. Create a key for free at https://app.vpndetection.io
 VPNDETECTION_API_KEY=your-api-key
+# For ACTION=challenge, also add your Turnstile widget's secret key:
+# TURNSTILE_SECRET_KEY=

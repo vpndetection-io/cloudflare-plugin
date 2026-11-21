@@ -10,6 +10,14 @@
     // Settings > Domains & Routes in the dashboard:
     // "routes": [{ "pattern": "example.com/*", "zone_name": "example.com" }],
     "vars": {
+        "BLOCK": "vpn,tor",
+        "ACTION": "block",
+        "PROXY_MIN_HITS": "1",
+        "ALLOW_IPS": "",
+        "ALLOW_PATHS": "",
+        "BLOCK_MESSAGE": "",
+        "TURNSTILE_SITE_KEY": "",
+        "FAIL_CLOSED": "false",
         "FORWARD": "true"
     }
 }
