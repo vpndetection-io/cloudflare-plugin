@@ -2,16 +2,17 @@ import { VERIFY_PATH } from './challenge.js';
 
 const DOCS = 'https://docs.vpndetection.io/integrations/cloudflare';
 
-const LABELS: Record<string, string> = {
-    vpn: 'a VPN',
-    tor: 'Tor',
-    pubproxy: 'a proxy',
-    resproxy: 'a proxy',
-    mobproxy: 'a proxy',
-    dcproxy: 'a proxy',
-    relay: 'a privacy relay such as iCloud Private Relay',
-    hosting: 'a hosting or cloud network',
-    smtp: 'a mail server',
+// How a refusal names each signal, and whether it is something the visitor can turn off.
+const LABELS: Record<string, { phrase: string; off: boolean }> = {
+    vpn: { phrase: 'through a VPN', off: true },
+    tor: { phrase: 'through Tor', off: true },
+    pubproxy: { phrase: 'through a proxy', off: true },
+    resproxy: { phrase: 'through a proxy', off: true },
+    mobproxy: { phrase: 'through a proxy', off: true },
+    dcproxy: { phrase: 'through a proxy', off: true },
+    relay: { phrase: 'through a privacy relay such as iCloud Private Relay', off: true },
+    hosting: { phrase: 'from a hosting or cloud network', off: false },
+    smtp: { phrase: 'from a mail server', off: false },
 };
 
 /** The refusal: a page for a browser, a line of JSON for anything else. */
@@ -98,9 +99,12 @@ function defaultMessage(signals: string[]): string {
     if (signals.includes('unavailable')) {
         return 'This site couldn\'t check your connection just now. Try again in a minute.';
     }
-    const labels = [...new Set(signals.map((s) => LABELS[s]).filter((l) => l !== undefined))];
-    const through = labels.length === 0 ? 'the network you\'re on' : joinOr(labels);
-    return `This site doesn't accept connections through ${through}. Turn it off and reload the page.`;
+    const labels = signals.map((s) => LABELS[s]).filter((l) => l !== undefined);
+    if (labels.length === 0) {
+        return 'This site doesn\'t accept connections from the network you\'re on.';
+    }
+    const off = labels.some((l) => l.off) ? ' Turn it off and reload the page.' : '';
+    return `This site doesn't accept connections ${joinOr([...new Set(labels.map((l) => l.phrase))])}.${off}`;
 }
 
 function joinOr(items: string[]): string {

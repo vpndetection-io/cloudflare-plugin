@@ -232,6 +232,15 @@ describe('signals', () => {
         assert.equal((await visit(mf, '34.82.1.1')).response.status, 200);
     });
 
+    test('a refusal names what was found, and asks to turn off only what a visitor can', async () => {
+        stub = freshStub();
+        const mf = await worker({ BLOCK: 'vpn,hosting' });
+        const vpn = await visit(mf, VPN);
+        assert.match(vpn.body, /connections through a VPN or from a hosting or cloud network\. Turn it off/);
+        const server = await visit(mf, '45.33.32.156');
+        assert.match(server.body, /connections from a hosting or cloud network\.<\/p>/);
+    });
+
     test('a signal the plan does not answer never matches', async () => {
         stub = freshStub();
         const mf = await worker({ BLOCK: 'resproxy' });
