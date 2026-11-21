@@ -7,9 +7,9 @@ The official [VPNDetection](https://vpndetection.io) Worker for Cloudflare block
 
 Cloudflare's own lists of VPN and anonymizer addresses come with its Enterprise plan alone. This Worker checks each visitor's address with the VPNDetection API on the Free, Pro and Business plans too, and blocks the request, asks for a Turnstile check, or passes it on marked. It works in front of any site behind Cloudflare, whatever runs it.
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/vpndetection-io/cloudflare-plugin)
-
 ## Getting Started
+
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/vpndetection-io/cloudflare-plugin)
 
 1. Create an API key in the [VPNDetection console](https://app.vpndetection.io). An account is free, and so is the plan it starts on.
 2. Click **Deploy to Cloudflare** above. Cloudflare copies this repository into your GitHub or GitLab account, asks for the Worker's settings and your API key, and deploys the Worker.
