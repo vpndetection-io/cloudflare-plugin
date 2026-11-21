@@ -1,0 +1,15 @@
+{
+    "$schema": "node_modules/wrangler/config-schema.json",
+    "name": "vpndetection",
+    "main": "src/index.ts",
+    "compatibility_date": "2026-11-13",
+    "observability": {
+        "enabled": true
+    },
+    // The Worker checks the visitors of the routes you give it. Add yours here, or under
+    // Settings > Domains & Routes in the dashboard:
+    // "routes": [{ "pattern": "example.com/*", "zone_name": "example.com" }],
+    "vars": {
+        "FORWARD": "true"
+    }
+}

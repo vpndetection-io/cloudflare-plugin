@@ -1,0 +1,42 @@
+{
+    "name": "vpndetection-cloudflare",
+    "version": "1.0.0",
+    "description": "Check every visitor at Cloudflare's edge with the VPNDetection API, on any plan, with a Worker you deploy in one click.",
+    "private": true,
+    "type": "module",
+    "license": "MIT",
+    "homepage": "https://vpndetection.io",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/vpndetection-io/cloudflare-plugin.git"
+    },
+    "scripts": {
+        "build": "wrangler deploy --dry-run --outdir dist",
+        "deploy": "wrangler deploy",
+        "dev": "wrangler dev",
+        "lint": "eslint",
+        "typecheck": "tsc --noEmit",
+        "test": "npm run build && node --test test/*.test.mjs"
+    },
+    "cloudflare": {
+        "bindings": {
+            "VPNDETECTION_API_KEY": {
+                "description": "Your VPNDetection API key. Create one for free in the [console](https://app.vpndetection.io)."
+            },
+            "FORWARD": {
+                "description": "`true` passes each answer to your site in the `X-VPNDetection` request header."
+            }
+        }
+    },
+    "dependencies": {
+        "vpndetection": "^5.17.0"
+    },
+    "devDependencies": {
+        "@cloudflare/workers-types": "^5.20261114.1",
+        "@mslmio/eslint-config": "^2.6.1",
+        "eslint": "^10.15.0",
+        "miniflare": "5.20261113.0-beta",
+        "typescript": "^6.0.3",
+        "wrangler": "^4.162.0"
+    }
+}
