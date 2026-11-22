@@ -1,6 +1,6 @@
 {
     "name": "vpndetection-cloudflare",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Block VPNs, proxies and Tor at Cloudflare's edge, on any plan, with a Worker that checks each visitor against the VPNDetection API.",
     "private": true,
     "type": "module",
