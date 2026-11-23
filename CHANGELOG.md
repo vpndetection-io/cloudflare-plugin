@@ -2,6 +2,13 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff.
 
+## 1.0.2 - 2026-11-23
+
+### Fixes
+
+- Ask only for the API key when deploying with the button ([`e6a7481`](https://github.com/vpndetection-io/cloudflare-plugin/commit/e6a748106a210188db85c67db9d5f7657c069cdb))
+- Bundle vpndetection 5.19.2, which changes no setting the Worker passes ([`047256a`](https://github.com/vpndetection-io/cloudflare-plugin/commit/047256afefc34dadb84d8705d578e06f0396263a))
+
 ## 1.0.1 - 2026-11-22
 
 ### Fixes
