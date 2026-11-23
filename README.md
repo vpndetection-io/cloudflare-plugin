@@ -12,7 +12,7 @@ Cloudflare's own lists of VPN and anonymizer addresses come with its Enterprise 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/vpndetection-io/cloudflare-plugin)
 
 1. Create an API key in the [VPNDetection console](https://app.vpndetection.io). An account is free, and so is the plan it starts on.
-2. Click **Deploy to Cloudflare** above. Cloudflare copies this repository into your GitHub or GitLab account, asks for the Worker's settings and your API key, and deploys the Worker.
+2. Click **Deploy to Cloudflare** above. Cloudflare copies this repository into your GitHub or GitLab account, asks for your API key, and deploys the Worker.
 3. Open the Worker's `workers.dev` address, which the deploy shows. The page there says whether your key works and what the Worker makes of your own connection.
 4. Put the Worker in front of your site. In the Cloudflare dashboard, open **Workers & Pages**, select **vpndetection**, then **Settings** > **Domains & Routes** > **Add** > **Route**. Pick your zone, enter `example.com/*` with your own domain, and select **Add route**; a site on subdomains too takes a second route, `*.example.com/*`. The Worker sees only traffic whose DNS record is proxied through Cloudflare, the orange cloud.
 5. Set each route to **Fail open**, so your site still loads as if the Worker weren't there if your account ever runs past the Workers free plan's 100,000 requests a day.
@@ -21,7 +21,7 @@ From then on every visitor to that route is checked. Out of the box the Worker r
 
 ## Settings
 
-Each setting is a variable in `wrangler.jsonc`, and the deploy asks for each one. To change one later, edit `wrangler.jsonc` in your copy of the repository and push: Cloudflare deploys every push. A variable changed in the dashboard instead is replaced by the next deploy from your repository. Routes are the other way round: while `wrangler.jsonc` names no `routes`, a deploy leaves the ones you added in the dashboard as they are, and once it names some, each deploy sets exactly those.
+Every setting has a default, so the deploy asks only for your API key. To change one, add it as a variable of type **Text** under **Workers & Pages** > **vpndetection** > **Settings** > **Variables and Secrets**. `wrangler.jsonc` sets `keep_vars`, so later deploys from your copy keep it. You can also set it under `vars` in `wrangler.jsonc` in your copy of the repository and push, since Cloudflare deploys every push. For routes: while `wrangler.jsonc` names no `routes`, a deploy leaves the ones you added in the dashboard as they are, and once it names some, each deploy sets exactly those.
 
 | Variable | Default | What it does |
 | --- | --- | --- |
@@ -62,7 +62,7 @@ A free account also tries every signal for a while; after that, a signal the [fr
 A Turnstile check lets a person on a VPN in after proving they're a person, and stops scripts.
 
 1. In the Cloudflare dashboard, open **Turnstile** > **Add widget**, name it, add your site's hostname, and keep the **Managed** mode.
-2. Set `TURNSTILE_SITE_KEY` to the widget's site key and `ACTION` to `challenge` in `wrangler.jsonc`.
+2. Set `TURNSTILE_SITE_KEY` to the widget's site key and `ACTION` to `challenge`, as [Settings](#settings) says.
 3. Add the widget's secret key as the secret `TURNSTILE_SECRET_KEY`, under **Settings** > **Variables and Secrets** or with `npx wrangler secret put TURNSTILE_SECRET_KEY`.
 
 A visitor who matches then sees the check. Passing it sets a cookie that lets that visitor's address through for 24 hours. A request that isn't a page load, such as an API call, is refused with `403` until then.

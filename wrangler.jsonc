@@ -9,15 +9,8 @@
     // The Worker checks the visitors of the routes you give it. Add yours here, or under
     // Settings > Domains & Routes in the dashboard:
     // "routes": [{ "pattern": "example.com/*", "zone_name": "example.com" }],
-    "vars": {
-        "BLOCK": "vpn,tor",
-        "ACTION": "block",
-        "PROXY_MIN_HITS": "1",
-        "ALLOW_IPS": "",
-        "ALLOW_PATHS": "",
-        "BLOCK_MESSAGE": "",
-        "TURNSTILE_SITE_KEY": "",
-        "FAIL_CLOSED": "false",
-        "FORWARD": "true"
-    }
+    // Every setting has a default, so the Deploy button asks for the API key alone. Set one under Settings >
+    // Variables and Secrets in the dashboard, which later deploys keep, or here, as the README says:
+    // "vars": { "BLOCK": "vpn,tor", "ACTION": "block" },
+    "keep_vars": true
 }

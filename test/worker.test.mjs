@@ -98,7 +98,10 @@ async function worker(vars = {}, options = {}) {
         modules: true,
         scriptPath: new URL('../dist/index.js', import.meta.url).pathname,
         compatibilityDate: compatibilityDate,
-        bindings: { VPNDETECTION_API_KEY: KEY, BLOCK: 'vpn,tor', ACTION: 'block', ...vars },
+        // A setting given as undefined is left out, as the Deploy button leaves every one but the key.
+        bindings: Object.fromEntries(Object.entries({
+            VPNDETECTION_API_KEY: KEY, BLOCK: 'vpn,tor', ACTION: 'block', ...vars,
+        }).filter(([, value]) => value !== undefined)),
         outboundService: outbound,
         ...options,
     }));
@@ -133,6 +136,17 @@ describe('blocking', () => {
         assert.match(body, new RegExp(VPN.replaceAll('.', '\\.')));
         assert.equal(response.headers.get('cache-control'), 'no-store');
         assert.equal(origin, undefined);
+    });
+
+    test('with the API key its only binding, it refuses VPNs and lets everyone else through', async () => {
+        stub = freshStub();
+        const mf = await worker({ BLOCK: undefined, ACTION: undefined });
+        const vpn = await visit(mf, VPN);
+        assert.equal(vpn.response.status, 403);
+        assert.equal(vpn.origin, undefined);
+        const clean = await visit(mf, CLEAN, '/pricing');
+        assert.equal(clean.response.status, 200);
+        assert.equal(forwarded(clean.origin).matched, false);
     });
 
     test('anything but a browser gets JSON', async () => {

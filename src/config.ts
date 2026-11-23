@@ -57,7 +57,7 @@ const schema = z.object({
     BLOCK: field((v, fail) => split(v).map((e) => {
         const signal = SIGNALS.find((s) => s === e.toLowerCase());
         return signal ?? fail(`names "${e}", which is none of ${SIGNALS.join(', ')}`);
-    })),
+    }), 'vpn,tor'),
     ACTION: field((v, fail) => {
         const action = ACTIONS.find((a) => a === (v.toLowerCase() || 'block'));
         return action ?? fail(`is "${v}", not ${ACTIONS.join(', ')}`);
@@ -149,14 +149,15 @@ function parseAddress(text: string): Address4 | Address6 | undefined {
     return undefined;
 }
 
-// One binding: its text, trimmed, parsed by `parse`, which reports a problem through `fail`.
-function field<T>(parse: (value: string, fail: (message: string) => never) => T) {
+// One binding: its text, trimmed, parsed by `parse`, which reports a problem through `fail`. A binding
+// that is not set at all reads as `unset`: the Deploy button sets none of them.
+function field<T>(parse: (value: string, fail: (message: string) => never) => T, unset = '') {
     return z.pipe(z.optional(z.string()), z.transform((raw: string | undefined, ctx) => {
         const fail = (message: string): never => {
             ctx.issues.push({ code: 'custom', input: raw, message: message });
             return z.NEVER;
         };
-        return parse((raw ?? '').trim(), fail);
+        return parse((raw ?? unset).trim(), fail);
     }));
 }
 
