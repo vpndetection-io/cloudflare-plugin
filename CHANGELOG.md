@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff.
 
+## 1.0.3 - 2026-11-23
+
+### Fixes
+
+- Fix the Updating steps for a copy the Deploy button made ([`dc10d2e`](https://github.com/vpndetection-io/cloudflare-plugin/commit/dc10d2ed3d4c5da64668205d1a1704e98950ef99))
+
 ## 1.0.2 - 2026-11-23
 
 ### Fixes
