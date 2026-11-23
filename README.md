@@ -92,13 +92,17 @@ If the API doesn't answer within `TIMEOUT_MS`, or answers with an error, the vis
 
 ## Updating
 
-Your copy of the repository doesn't follow this one. To take a newer release, pull it into your copy and push:
+Your copy of the repository doesn't follow this one, and shares none of its history. The first time you take a newer release, mark the release your copy was made from, then merge and push:
 
 ```bash
 git remote add upstream https://github.com/vpndetection-io/cloudflare-plugin.git
-git pull upstream main
+git fetch upstream
+git merge -s ours --allow-unrelated-histories -m "Track vpndetection-io/cloudflare-plugin" "v$(node -p "require('./package.json').version")"
+git merge --no-edit upstream/main
 git push
 ```
+
+After that, `git fetch upstream`, `git merge --no-edit upstream/main` and `git push` take each release. Your Worker's name and anything you changed stay as they are.
 
 ## Deploying without the button
 
