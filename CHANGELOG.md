@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff.
 
+## 1.1.0 - 2026-11-25
+
+### Features
+
+- Refuse forged crawlers with the spoofed signal ([`f803ad6`](https://github.com/vpndetection-io/cloudflare-plugin/commit/f803ad66e0922f230476437f7dce4baa613b31f1))
+
 ## 1.0.4 - 2026-11-24
 
 ### Fixes
