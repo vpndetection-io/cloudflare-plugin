@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff.
 
+## 1.1.1 - 2026-11-25
+
+### Fixes
+
+- Bundle vpndetection 5.21.1 and build with wrangler 4.164.0 ([`cbaabe8`](https://github.com/vpndetection-io/cloudflare-plugin/commit/cbaabe81de1a21d5d58680b0647df8592922db2b))
+
 ## 1.1.0 - 2026-11-25
 
 ### Features
