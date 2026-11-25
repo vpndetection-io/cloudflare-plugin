@@ -2,6 +2,12 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff.
 
+## 1.1.2 - 2026-11-25
+
+### Fixes
+
+- Send only a crawler's User-Agent, at most four per address ([`97471a2`](https://github.com/vpndetection-io/cloudflare-plugin/commit/97471a23307f70e193193cd4e4f2d7f40aa13390))
+
 ## 1.1.1 - 2026-11-25
 
 ### Fixes
