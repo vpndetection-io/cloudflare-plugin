@@ -306,6 +306,34 @@ describe('signals', () => {
         assert.match(posing.body, /posing as a known crawler/);
     });
 
+    test('an address costs one lookup for any number of browsers and at most four more for crawlers', async () => {
+        stub = freshStub();
+        const mf = await worker({ BLOCK: 'vpn,spoofed' });
+        for (let i = 0; i < 20; i++) {
+            const agent = CHROME.replace('142.0', `142.0.${i}`);
+            const person = await visit(mf, CLEAN, '/', { headers: { 'User-Agent': agent } });
+            assert.equal(person.response.status, 200);
+        }
+        assert.equal(stub.lookups, 1);
+        assert.deepEqual(stub.agentsSent, [null]);
+        for (let i = 0; i < 20; i++) {
+            const forged = await visit(mf, CLEAN, '/', { headers: { 'User-Agent': `${GOOGLEBOT} ${i}` } });
+            assert.equal(forged.response.status, 403, `forged crawler ${i}`);
+        }
+        assert.equal(stub.lookups, 5);
+    });
+
+    test('a vouched-for crawler past its address\'s bound is still let through', async () => {
+        stub = freshStub();
+        const mf = await worker({ BLOCK: 'hosting,spoofed' });
+        for (let i = 0; i < 8; i++) {
+            const crawler = await visit(mf, CRAWLER, '/', { headers: { 'User-Agent': `${GOOGLEBOT} ${i}` } });
+            assert.equal(crawler.response.status, 200, `crawler agent ${i}`);
+            assert.equal(forwarded(crawler.origin).exempt, 'verified-bot');
+        }
+        assert.equal(stub.lookups, 5);
+    });
+
     test('spoofed never matches on a plan with no verdict', async () => {
         stub = freshStub();
         const mf = await worker({ BLOCK: 'spoofed' });

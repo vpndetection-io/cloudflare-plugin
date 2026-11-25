@@ -5,9 +5,10 @@ import pkg from '../package.json' with { type: 'json' };
 
 import { edgeCachedFetch } from './cache.js';
 import { hasPass, verify, VERIFY_PATH } from './challenge.js';
+import { crawlerClaims, type Claims } from './claims.js';
 import { inRanges, parseEnv, type Env, type Settings } from './config.js';
 import { challengePage, refusal, setupPage } from './pages.js';
-import { judge, type Verdict } from './rules.js';
+import { judge, type Claim, type Verdict } from './rules.js';
 
 /** The request header each answer reaches your site on. */
 const RECORD_HEADER = 'X-VPNDetection';
@@ -16,6 +17,11 @@ const RECORD_HEADER = 'X-VPNDetection';
 const STATIC = /\.(?:css|js|mjs|map|png|jpe?g|gif|webp|avif|svg|ico|woff2?|ttf|otf|eot|mp4|webm|mp3)$/i;
 
 const USER_AGENT = `vpndetection-cloudflare/${pkg.version}`;
+
+const DEFAULT_BASE_URL = 'https://api.vpndetection.io';
+
+// The agent each request's lookup carries, read by the core.
+const sentAgents = new WeakMap<Request, string>();
 
 /** What reaches your site in {@link RECORD_HEADER}, as JSON. */
 export interface ForwardedRecord {
@@ -55,7 +61,7 @@ async function handle(request: Request, env: Env): Promise<Response> {
         runtime.warn(`checking no one, until these settings are fixed: ${runtime.problems.join('; ')}`);
         return forward(request, undefined);
     }
-    const { settings, core, warn } = runtime;
+    const { settings, warn } = runtime;
     const ip = clientIp(request);
     const turnstile = settings.action === 'challenge' ? settings.turnstile : undefined;
     const verifying = url.pathname === VERIFY_PATH && request.method === 'POST';
@@ -66,8 +72,8 @@ async function handle(request: Request, env: Env): Promise<Response> {
     if (unchecked(request, url, ip, settings)) {
         return forward(request, undefined);
     }
-    const lookup = await evaluate(core, request, settings.timeoutMs);
-    const verdict = judge(lookup, settings, warn, sentAgent(request, settings));
+    const { lookup, claim } = await classify(runtime, request, ip);
+    const verdict = judge(lookup, settings, warn, claim);
     const forwarding = settings.forward;
     if (!verdict.matched) {
         return forward(request, forwarding ? record(lookup, verdict) : undefined);
@@ -87,9 +93,17 @@ async function handle(request: Request, env: Env): Promise<Response> {
     return refusal(request, lookup.ip, verdict.signals, settings.blockMessage);
 }
 
-type Runtime =
-    | { ok: true; settings: Settings; client: VPNDetection; core: Core<Request>; warn: (message: string) => void }
-    | { ok: false; problems: string[]; warn: (message: string) => void };
+type Runtime = Ready | { ok: false; problems: string[]; warn: (message: string) => void };
+
+interface Ready {
+    ok: true;
+    settings: Settings;
+    client: VPNDetection;
+    core: Core<Request>;
+    /** Present while `BLOCK` names `spoofed`. */
+    claims?: Claims;
+    warn: (message: string) => void;
+}
 
 const ENV_NAMES: (keyof Env)[] = [
     'VPNDETECTION_API_KEY', 'VPNDETECTION_BASE_URL', 'BLOCK', 'ACTION', 'PROXY_MIN_HITS', 'ALLOW_IPS',
@@ -121,14 +135,45 @@ function runtimeFor(env: Env): Runtime {
             timeoutMs: settings.timeoutMs,
         });
         // allowBots is what sends the agent; the rules judge the verdict, and warn of a plan without one.
+        const spoofed = settings.block.includes('spoofed');
         const core = createCore<Request>({
             client: client, timeoutMs: settings.timeoutMs, retries: 0, onWarn: warn,
-            allowBots: settings.block.includes('spoofed'), onMissingField: 'ignore',
-        }, clientIp, userAgent);
-        runtime = { ok: true, settings: settings, client: client, core: core, warn: warn };
+            allowBots: spoofed, onMissingField: 'ignore',
+        }, clientIp, (request) => sentAgents.get(request));
+        const claims = spoofed
+            ? crawlerClaims(settings.apiKey, settings.baseUrl ?? DEFAULT_BASE_URL, settings.cacheTtl)
+            : undefined;
+        runtime = {
+            ok: true, settings: settings, client: client, core: core, warn: warn,
+            ...(claims === undefined ? {} : { claims: claims }),
+        };
     }
     memo = { key: key, runtime: runtime };
     return runtime;
+}
+
+/**
+ * Look the visitor up, its agent riding the lookup where `BLOCK` names `spoofed` and the agent names a
+ * crawler its address is not past its bound of.
+ */
+async function classify(
+    runtime: Ready, request: Request, ip: string | undefined,
+): Promise<{ lookup: Lookup; claim?: Claim }> {
+    const { claims, core, settings, warn } = runtime;
+    if (claims === undefined) {
+        return { lookup: await evaluate(core, request, settings.timeoutMs) };
+    }
+    const planned = await claims.plan(ip, userAgent(request));
+    if (planned.agent !== undefined) {
+        sentAgents.set(request, planned.agent);
+    }
+    const lookup = await evaluate(core, request, settings.timeoutMs);
+    try {
+        await claims.note(ip, planned, lookup.result?.userAgent?.verdict);
+    } catch (err) {
+        warn(`could not keep the agents an address was looked up with: ${String(err)}`);
+    }
+    return planned.claim === undefined ? { lookup: lookup } : { lookup: lookup, claim: planned.claim };
 }
 
 /**
@@ -157,15 +202,15 @@ async function setup(request: Request, runtime: Runtime): Promise<Response> {
     if (!runtime.ok) {
         return setupPage({ problems: runtime.problems });
     }
-    const { settings, client, core, warn } = runtime;
-    const [plan, lookup] = await Promise.all([
+    const { settings, client, warn } = runtime;
+    const [plan, { lookup, claim }] = await Promise.all([
         client.myEntitlement({ timeoutMs: settings.timeoutMs, retries: 0 }).then(
             (entitlement) => ({ name: entitlement.plan.name }),
             (err: unknown) => ({ error: describe(err) }),
         ),
-        evaluate(core, request, settings.timeoutMs),
+        classify(runtime, request, clientIp(request)),
     ]);
-    const verdict = judge(lookup, settings, warn, sentAgent(request, settings));
+    const verdict = judge(lookup, settings, warn, claim);
     return setupPage({
         problems: [],
         plan: 'name' in plan ? plan.name : undefined,
@@ -258,12 +303,7 @@ function clientIp(request: Request): string | undefined {
 }
 
 function userAgent(request: Request): string | undefined {
-    return request.headers.get('User-Agent') ?? undefined;
-}
-
-// The agent the lookup carried: the visitor's own, while BLOCK names spoofed.
-function sentAgent(request: Request, settings: Settings): string | undefined {
-    return settings.block.includes('spoofed') ? userAgent(request) || undefined : undefined;
+    return request.headers.get('User-Agent') || undefined;
 }
 
 // Its own workers.dev address and local development, where no site stands behind the Worker.

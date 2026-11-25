@@ -58,7 +58,7 @@ A free account also tries every signal for a while; after that, a signal the [fr
 
 **Search engines' crawlers are never refused.** On a paid plan, an address whose bot operator vouches for it, such as Googlebot's, passes whatever it matched. On the free plan, `hosting` spares any address a known bot uses, since only a paid answer tells a verified crawler from one pretending.
 
-**`spoofed` catches a forged crawler**, a scraper that calls itself Googlebot to get past rules that let crawlers in. It's off unless `BLOCK` names it. While it's on, each lookup also sends the visitor's `User-Agent`, and the answer then depends on it, so an address is looked up once for each agent it arrives with, which spends a plan's lookups faster.
+**`spoofed` catches a forged crawler**, a scraper that calls itself Googlebot to get past rules that let crawlers in. It's off unless `BLOCK` names it. While it's on, a lookup also sends the visitor's `User-Agent` when it names a crawler, never a browser's. An address is looked up with at most four crawler agents while its answers are cached, and a crawler it claims past those is judged spoofed if one before it was.
 
 ## Challenge instead of block
 
@@ -121,7 +121,7 @@ Then add the route as in steps 4 and 5, or uncomment `routes` in `wrangler.jsonc
 
 ## What it sends
 
-The Worker calls the VPNDetection API at `https://api.vpndetection.io` with your API key and the visitor's IP address, at most once an hour per address in each Cloudflare data center. With `BLOCK` naming `spoofed`, it sends the visitor's `User-Agent` too, and looks an address up once an hour for each agent. With `ACTION` set to `challenge`, it sends a Turnstile token and the visitor's address to Cloudflare's Turnstile service when a visitor submits the check.
+The Worker calls the VPNDetection API at `https://api.vpndetection.io` with your API key and the visitor's IP address, at most once an hour per address in each Cloudflare data center. With `BLOCK` naming `spoofed`, it sends the visitor's `User-Agent` too when it names a crawler, for up to four such agents an hour per address. With `ACTION` set to `challenge`, it sends a Turnstile token and the visitor's address to Cloudflare's Turnstile service when a visitor submits the check.
 
 ## Other Libraries
 

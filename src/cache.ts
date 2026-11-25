@@ -51,7 +51,7 @@ function lifeSeconds(body: string, ttlS: number): number {
     return ttlS;
 }
 
-async function digest(text: string): Promise<string> {
+export async function digest(text: string): Promise<string> {
     const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
     return [...new Uint8Array(bytes).slice(0, 8)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }

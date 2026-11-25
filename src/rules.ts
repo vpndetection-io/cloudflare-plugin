@@ -14,6 +14,14 @@ export interface Verdict {
     exempt?: 'verified-bot';
 }
 
+/** A crawler named by the visitor's `User-Agent`, while `BLOCK` names `spoofed`. */
+export interface Claim {
+    /** Whether the lookup carried the agent, and so its verdict. */
+    sent: boolean;
+    /** Whether a claim the address was looked up with earlier read spoofed. */
+    spoofedBefore: boolean;
+}
+
 // Read off the answer as served: the SDK names a member only once it is re-pinned to a spec that has it.
 const botAnswer = z.object({
     is_bot: z.optional(z.boolean()),
@@ -23,11 +31,11 @@ const botAnswer = z.object({
 /**
  * Judge one lookup against the settings. A verified bot, one whose operator vouches for the address, is
  * never refused for what the address is: search engines' crawlers run on hosting networks. `spoofed`, a
- * visitor whose `User-Agent` names a crawler that the address does not bear out, is judged from `agent`,
- * the one the lookup sent, and is never spared so.
+ * visitor whose `User-Agent` names a crawler that the address does not bear out, is judged from `claim`
+ * and is never spared so.
  */
 export function judge(
-    lookup: Lookup, settings: Settings, warn: (message: string) => void, agent?: string,
+    lookup: Lookup, settings: Settings, warn: (message: string) => void, claim?: Claim,
 ): Verdict {
     const result = lookup.result;
     if (result === undefined) {
@@ -37,10 +45,11 @@ export function judge(
     }
     const bot = botAnswer.safeParse(result.raw);
     const isBot = bot.success && bot.data.is_bot === true;
+    const vouched = bot.success && bot.data.bot?.verified === true;
     const signals: string[] = [];
     for (const signal of settings.block) {
         if (signal === 'spoofed') {
-            if (spoofed(result, agent, warn)) {
+            if (spoofed(result, claim, vouched, warn)) {
                 signals.push(signal);
             }
             continue;
@@ -59,7 +68,7 @@ export function judge(
             signals.push(signal);
         }
     }
-    const verified = (bot.success && bot.data.bot?.verified === true) || result.userAgent?.verdict === 'verified';
+    const verified = vouched || result.userAgent?.verdict === 'verified';
     if (signals.length > 0 && verified) {
         const left = signals.filter((signal) => signal === 'spoofed');
         return left.length > 0
@@ -69,11 +78,16 @@ export function judge(
     return { matched: signals.length > 0, signals: signals };
 }
 
-// Whether the agent the lookup sent names a crawler this address does not bear out. A verdict comes with a
-// paid plan or the trial; a bogon is answered locally, with none.
-function spoofed(result: Result, agent: string | undefined, warn: (message: string) => void): boolean {
-    if (agent === undefined || result.isBogon === true) {
+// Whether the crawler claimed is one this address does not bear out. A verdict comes with a paid plan or
+// the trial; a bogon is answered locally, with none. A vouched-for address never inherits an earlier one.
+function spoofed(
+    result: Result, claim: Claim | undefined, vouched: boolean, warn: (message: string) => void,
+): boolean {
+    if (claim === undefined || result.isBogon === true) {
         return false;
+    }
+    if (!claim.sent) {
+        return claim.spoofedBefore && !vouched;
     }
     if (result.userAgent === undefined) {
         warn('BLOCK names spoofed, which your plan does not answer (user_agent), so it never matches');
