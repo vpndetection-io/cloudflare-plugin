@@ -17,6 +17,8 @@ const CLEAN = '81.2.69.142';
 const CRAWLER = '66.249.66.1';
 const RELAY = '172.225.46.64';
 const BROWSER = { accept: 'text/html,application/xhtml+xml' };
+const GOOGLEBOT = 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)';
+const CHROME = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0 Safari/537.36';
 const wrangler = await readFile(new URL('../wrangler.jsonc', import.meta.url), 'utf8');
 const compatibilityDate = /"compatibility_date":\s*"([^"]+)"/.exec(wrangler)[1];
 
@@ -43,10 +45,12 @@ const ANSWERS = {
     '45.33.32.156': FREE,
     '34.82.1.1': { ...FREE, ip: '34.82.1.1', is_bot: true },
 };
+// Googlebot's network, vouched for, from an address the stub's agent check does not bear Googlebot out on.
+ANSWERS['66.249.66.2'] = { ...ANSWERS[CRAWLER], ip: '66.249.66.2' };
 
 let stub = freshStub();
 function freshStub() {
-    return { lookups: 0, apiStatus: 200, apiDelayMs: 0, plan: 'Starter', userAgents: [], origin: [] };
+    return { lookups: 0, apiStatus: 200, apiDelayMs: 0, plan: 'Starter', userAgents: [], agentsSent: [], origin: [] };
 }
 
 async function outbound(request) {
@@ -74,7 +78,21 @@ async function outbound(request) {
         }
         const ip = decodeURIComponent(url.pathname.slice(1));
         const answer = ANSWERS[ip];
-        return answer === undefined ? Response.json({ rc: 'NOT_FOUND' }, { status: 404 }) : Response.json(answer);
+        if (answer === undefined) {
+            return Response.json({ rc: 'NOT_FOUND' }, { status: 404 });
+        }
+        const agent = url.searchParams.get('user_agent');
+        stub.agentsSent.push(agent);
+        // A verdict comes with a paid answer alone, which the free one's missing is_hosting tells apart.
+        if (agent === null || !('is_hosting' in answer)) {
+            return Response.json(answer);
+        }
+        const crawler = agent.includes('Googlebot');
+        const verdict = crawler ? (ip === CRAWLER ? 'verified' : 'spoofed') : 'not_bot';
+        return Response.json({
+            ...answer,
+            user_agent: { agent: crawler ? 'Googlebot' : 'Chrome', kind: crawler ? 'bot' : 'browser', verdict: verdict },
+        });
     }
     if (url.href === 'https://challenges.cloudflare.com/turnstile/v0/siteverify') {
         const form = new URLSearchParams(await request.text());
@@ -253,6 +271,48 @@ describe('signals', () => {
         assert.match(vpn.body, /connections through a VPN or from a hosting or cloud network\. Turn it off/);
         const server = await visit(mf, '45.33.32.156');
         assert.match(server.body, /connections from a hosting or cloud network\.<\/p>/);
+    });
+
+    test('spoofed refuses a client posing as a crawler, sending the agent only while BLOCK names it', async () => {
+        stub = freshStub();
+        const mf = await worker({ BLOCK: 'vpn,spoofed' });
+        const forged = await visit(mf, CLEAN, '/', { headers: { 'User-Agent': GOOGLEBOT } });
+        assert.equal(forged.response.status, 403);
+        assert.match(forged.body, /connections from a client posing as a known crawler\.<\/p>/);
+        assert.deepEqual(stub.agentsSent, [GOOGLEBOT]);
+        const real = await visit(mf, CRAWLER, '/', { headers: { 'User-Agent': GOOGLEBOT } });
+        assert.equal(real.response.status, 200);
+        assert.equal(forwarded(real.origin).result.user_agent.verdict, 'verified');
+        const person = await visit(mf, CLEAN, '/', { headers: { 'User-Agent': CHROME } });
+        assert.equal(person.response.status, 200);
+        assert.equal(forwarded(person.origin).matched, false);
+        const vpn = await visit(mf, VPN, '/', { headers: { 'User-Agent': GOOGLEBOT } });
+        assert.equal(vpn.response.status, 403);
+
+        stub = freshStub();
+        const off = await worker({ BLOCK: 'vpn' });
+        assert.equal((await visit(off, CLEAN, '/', { headers: { 'User-Agent': GOOGLEBOT } })).response.status, 200);
+        assert.deepEqual(stub.agentsSent, [null]);
+    });
+
+    test('a verified crawler\'s address spares what the address is, never a spoofed agent', async () => {
+        stub = freshStub();
+        const mf = await worker({ BLOCK: 'hosting,spoofed' });
+        const verified = await visit(mf, CRAWLER, '/', { headers: { 'User-Agent': GOOGLEBOT } });
+        assert.equal(verified.response.status, 200);
+        assert.equal(forwarded(verified.origin).exempt, 'verified-bot');
+        const posing = await visit(mf, '66.249.66.2', '/', { headers: { 'User-Agent': GOOGLEBOT } });
+        assert.equal(posing.response.status, 403);
+        assert.match(posing.body, /posing as a known crawler/);
+    });
+
+    test('spoofed never matches on a plan with no verdict', async () => {
+        stub = freshStub();
+        const mf = await worker({ BLOCK: 'spoofed' });
+        const free = await visit(mf, '45.33.32.156', '/', { headers: { 'User-Agent': GOOGLEBOT } });
+        assert.equal(free.response.status, 200);
+        assert.deepEqual(forwarded(free.origin).signals, []);
+        assert.deepEqual(stub.agentsSent, [GOOGLEBOT]);
     });
 
     test('a signal the plan does not answer never matches', async () => {

@@ -67,7 +67,7 @@ async function handle(request: Request, env: Env): Promise<Response> {
         return forward(request, undefined);
     }
     const lookup = await evaluate(core, request, settings.timeoutMs);
-    const verdict = judge(lookup, settings, warn);
+    const verdict = judge(lookup, settings, warn, sentAgent(request, settings));
     const forwarding = settings.forward;
     if (!verdict.matched) {
         return forward(request, forwarding ? record(lookup, verdict) : undefined);
@@ -120,9 +120,11 @@ function runtimeFor(env: Env): Runtime {
             retries: 0,
             timeoutMs: settings.timeoutMs,
         });
+        // allowBots is what sends the agent; the rules judge the verdict, and warn of a plan without one.
         const core = createCore<Request>({
             client: client, timeoutMs: settings.timeoutMs, retries: 0, onWarn: warn,
-        }, clientIp);
+            allowBots: settings.block.includes('spoofed'), onMissingField: 'ignore',
+        }, clientIp, userAgent);
         runtime = { ok: true, settings: settings, client: client, core: core, warn: warn };
     }
     memo = { key: key, runtime: runtime };
@@ -163,7 +165,7 @@ async function setup(request: Request, runtime: Runtime): Promise<Response> {
         ),
         evaluate(core, request, settings.timeoutMs),
     ]);
-    const verdict = judge(lookup, settings, warn);
+    const verdict = judge(lookup, settings, warn, sentAgent(request, settings));
     return setupPage({
         problems: [],
         plan: 'name' in plan ? plan.name : undefined,
@@ -253,6 +255,15 @@ function asciiJson(value: ForwardedRecord): string {
 function clientIp(request: Request): string | undefined {
     const ip = request.headers.get('CF-Connecting-IP')?.trim();
     return ip === undefined || ip === '' ? undefined : ip;
+}
+
+function userAgent(request: Request): string | undefined {
+    return request.headers.get('User-Agent') ?? undefined;
+}
+
+// The agent the lookup carried: the visitor's own, while BLOCK names spoofed.
+function sentAgent(request: Request, settings: Settings): string | undefined {
+    return settings.block.includes('spoofed') ? userAgent(request) || undefined : undefined;
 }
 
 // Its own workers.dev address and local development, where no site stands behind the Worker.

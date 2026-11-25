@@ -52,10 +52,13 @@ Your API key is the secret `VPNDETECTION_API_KEY`. The deploy asks for it, and y
 | `mobproxy` | Phone connections rented out as proxies, whose addresses carriers share with ordinary customers | A paid plan |
 | `dcproxy` | Proxies running in datacenters | A paid plan |
 | `smtp` | Addresses that run a mail server, which home and mobile connections can't | A paid plan |
+| `spoofed` | A client whose `User-Agent` names a crawler, such as Googlebot, from an address that crawler doesn't use | A paid plan |
 
 A free account also tries every signal for a while; after that, a signal the [free plan](https://vpndetection.io/pricing) doesn't answer never matches, and the Worker logs that once. A privacy relay is judged as a relay alone, even where it runs on a hosting network.
 
 **Search engines' crawlers are never refused.** On a paid plan, an address whose bot operator vouches for it, such as Googlebot's, passes whatever it matched. On the free plan, `hosting` spares any address a known bot uses, since only a paid answer tells a verified crawler from one pretending.
+
+**`spoofed` catches a forged crawler**, a scraper that calls itself Googlebot to get past rules that let crawlers in. It's off unless `BLOCK` names it. While it's on, each lookup also sends the visitor's `User-Agent`, and the answer then depends on it, so an address is looked up once for each agent it arrives with, which spends a plan's lookups faster.
 
 ## Challenge instead of block
 
@@ -118,7 +121,7 @@ Then add the route as in steps 4 and 5, or uncomment `routes` in `wrangler.jsonc
 
 ## What it sends
 
-The Worker calls the VPNDetection API at `https://api.vpndetection.io` with your API key and the visitor's IP address, at most once an hour per address in each Cloudflare data center. With `ACTION` set to `challenge`, it sends a Turnstile token and the visitor's address to Cloudflare's Turnstile service when a visitor submits the check.
+The Worker calls the VPNDetection API at `https://api.vpndetection.io` with your API key and the visitor's IP address, at most once an hour per address in each Cloudflare data center. With `BLOCK` naming `spoofed`, it sends the visitor's `User-Agent` too, and looks an address up once an hour for each agent. With `ACTION` set to `challenge`, it sends a Turnstile token and the visitor's address to Cloudflare's Turnstile service when a visitor submits the check.
 
 ## Other Libraries
 

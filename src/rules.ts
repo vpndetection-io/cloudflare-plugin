@@ -22,9 +22,13 @@ const botAnswer = z.object({
 
 /**
  * Judge one lookup against the settings. A verified bot, one whose operator vouches for the address, is
- * never refused: search engines' crawlers run on hosting networks.
+ * never refused for what the address is: search engines' crawlers run on hosting networks. `spoofed`, a
+ * visitor whose `User-Agent` names a crawler that the address does not bear out, is judged from `agent`,
+ * the one the lookup sent, and is never spared so.
  */
-export function judge(lookup: Lookup, settings: Settings, warn: (message: string) => void): Verdict {
+export function judge(
+    lookup: Lookup, settings: Settings, warn: (message: string) => void, agent?: string,
+): Verdict {
     const result = lookup.result;
     if (result === undefined) {
         return settings.failClosed
@@ -35,6 +39,12 @@ export function judge(lookup: Lookup, settings: Settings, warn: (message: string
     const isBot = bot.success && bot.data.is_bot === true;
     const signals: string[] = [];
     for (const signal of settings.block) {
+        if (signal === 'spoofed') {
+            if (spoofed(result, agent, warn)) {
+                signals.push(signal);
+            }
+            continue;
+        }
         const term = termFor(signal, result, isBot, settings.proxyMinHits);
         if (term === null) {
             continue;
@@ -49,10 +59,27 @@ export function judge(lookup: Lookup, settings: Settings, warn: (message: string
             signals.push(signal);
         }
     }
-    if (signals.length > 0 && bot.success && bot.data.bot?.verified === true) {
-        return { matched: false, signals: [], exempt: 'verified-bot' };
+    const verified = (bot.success && bot.data.bot?.verified === true) || result.userAgent?.verdict === 'verified';
+    if (signals.length > 0 && verified) {
+        const left = signals.filter((signal) => signal === 'spoofed');
+        return left.length > 0
+            ? { matched: true, signals: left }
+            : { matched: false, signals: [], exempt: 'verified-bot' };
     }
     return { matched: signals.length > 0, signals: signals };
+}
+
+// Whether the agent the lookup sent names a crawler this address does not bear out. A verdict comes with a
+// paid plan or the trial; a bogon is answered locally, with none.
+function spoofed(result: Result, agent: string | undefined, warn: (message: string) => void): boolean {
+    if (agent === undefined || result.isBogon === true) {
+        return false;
+    }
+    if (result.userAgent === undefined) {
+        warn('BLOCK names spoofed, which your plan does not answer (user_agent), so it never matches');
+        return false;
+    }
+    return result.userAgent.verdict === 'spoofed';
 }
 
 /**
@@ -88,5 +115,7 @@ function termFor(signal: Signal, result: Result, isBot: boolean, minHits: number
             return isBot ? null : { asn: { type: 'hosting' } };
         }
         return { isHosting: true };
+    case 'spoofed':
+        return null;
     }
 }

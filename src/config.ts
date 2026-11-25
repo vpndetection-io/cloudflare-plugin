@@ -1,9 +1,12 @@
 import { Address4, Address6 } from 'ip-address';
 import * as z from 'zod/mini';
 
-/** What the Worker can act on: each is one member of a lookup answer. */
+/**
+ * What the Worker can act on: each is one member of a lookup answer. `spoofed` is the one that sends the
+ * visitor's `User-Agent` with the lookup, and only while `BLOCK` names it.
+ */
 export const SIGNALS = [
-    'vpn', 'tor', 'pubproxy', 'resproxy', 'mobproxy', 'dcproxy', 'hosting', 'relay', 'smtp',
+    'vpn', 'tor', 'pubproxy', 'resproxy', 'mobproxy', 'dcproxy', 'hosting', 'relay', 'smtp', 'spoofed',
 ] as const;
 export type Signal = (typeof SIGNALS)[number];
 

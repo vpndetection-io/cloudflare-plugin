@@ -13,6 +13,7 @@ const LABELS: Record<string, { phrase: string; off: boolean }> = {
     relay: { phrase: 'through a privacy relay such as iCloud Private Relay', off: true },
     hosting: { phrase: 'from a hosting or cloud network', off: false },
     smtp: { phrase: 'from a mail server', off: false },
+    spoofed: { phrase: 'from a client posing as a known crawler', off: false },
 };
 
 /** The refusal: a page for a browser, a line of JSON for anything else. */
