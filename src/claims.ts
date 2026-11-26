@@ -1,19 +1,13 @@
+import { MAX_AGENTS_PER_ADDRESS, namesCrawler } from 'vpndetection/middleware';
+
 import { digest } from './cache.js';
 import type { Claim } from './rules.js';
 
 /**
- * A User-Agent naming a crawler, the only kind whose verdict can be verified or spoofed. It errs toward
- * matching: a browser taken for a crawler costs a lookup, a crawler missed is judged on its address alone.
+ * The least time an address's crawler agents are kept: the hour the SDK's core keeps them in each copy of
+ * the Worker, sending none past its own bound. Kept as long here, it never drops an agent the Worker sends.
  */
-const CRAWLER = new RegExp([
-    'bot', 'crawl', 'spider', 'slurp', 'scan', '-user\\b', 'google', 'meta-', 'facebook', 'whatsapp',
-    'yeti', 'cohere', 'embedly', 'flipboard', 'ahrefs', 'screaming frog', 'lumar', 'parse\\.ly', 'rssapi',
-    'ttd-content', 'pingdom', 'statuscake', 'site24x7', 'datadog', 'stripe', 'hookshot', 'censys',
-    'internetmeasurement', 'expanse',
-].join('|'), 'i');
-
-/** The most crawler agents one address is looked up with while its answers are cached. */
-export const MAX_AGENTS = 4;
+const AGENTS_TTL_S = 3600;
 
 /** What one request's `User-Agent` comes to while `BLOCK` names `spoofed`. */
 export interface Planned {
@@ -37,10 +31,12 @@ interface Seen {
 }
 
 /**
- * Only a crawler's agent rides a lookup, and one address is looked up with at most {@link MAX_AGENTS} of
- * them for `ttlS` seconds. Past that, a claim is judged spoofed where one of the address's earlier ones was.
+ * Only a crawler's agent rides a lookup, and one address is looked up with at most
+ * {@link MAX_AGENTS_PER_ADDRESS} of them for `ttlS` seconds, an hour at least. Past that, a claim is judged
+ * spoofed where one of the address's earlier ones was.
  */
 export function crawlerClaims(apiKey: string, baseUrl: string, ttlS: number): Claims {
+    const keptS = Math.max(ttlS, AGENTS_TTL_S);
     let keyTag: string | undefined;
     const keyOf = async (ip: string): Promise<Request> => {
         keyTag ??= await digest(`${baseUrl} ${apiKey}`);
@@ -48,15 +44,15 @@ export function crawlerClaims(apiKey: string, baseUrl: string, ttlS: number): Cl
     };
     return {
         plan: async (ip, userAgent) => {
-            if (userAgent === undefined || !CRAWLER.test(userAgent)) {
+            if (userAgent === undefined || !namesCrawler(userAgent)) {
                 return {};
             }
-            if (ip === undefined || ttlS === 0) {
+            if (ip === undefined) {
                 return { agent: userAgent, claim: { sent: true, spoofedBefore: false } };
             }
             const tag = await digest(userAgent);
             const seen = await read(await keyOf(ip));
-            if (seen.agents.includes(tag) || seen.agents.length < MAX_AGENTS) {
+            if (seen.agents.includes(tag) || seen.agents.length < MAX_AGENTS_PER_ADDRESS) {
                 return { agent: userAgent, tag: tag, claim: { sent: true, spoofedBefore: seen.spoofed } };
             }
             return { claim: { sent: false, spoofedBefore: seen.spoofed } };
@@ -75,7 +71,7 @@ export function crawlerClaims(apiKey: string, baseUrl: string, ttlS: number): Cl
             const agents = known ? seen.agents : [...seen.agents, planned.tag];
             const next: Seen = { agents: agents, spoofed: spoofed };
             await caches.default.put(key, new Response(JSON.stringify(next), {
-                headers: { 'Content-Type': 'application/json', 'Cache-Control': `max-age=${ttlS}` },
+                headers: { 'Content-Type': 'application/json', 'Cache-Control': `max-age=${keptS}` },
             }));
         },
     };

@@ -58,7 +58,7 @@ A free account also tries every signal for a while; after that, a signal the [fr
 
 **Search engines' crawlers are never refused.** On a paid plan, an address whose bot operator vouches for it, such as Googlebot's, passes whatever it matched. On the free plan, `hosting` spares any address a known bot uses, since only a paid answer tells a verified crawler from one pretending.
 
-**`spoofed` catches a forged crawler**, a scraper that calls itself Googlebot to get past rules that let crawlers in. It's off unless `BLOCK` names it. While it's on, a lookup also sends the visitor's `User-Agent` when it names a crawler, never a browser's. An address is looked up with at most four crawler agents while its answers are cached, and a crawler it claims past those is judged spoofed if one before it was.
+**`spoofed` catches a forged crawler**, a scraper that calls itself Googlebot to get past rules that let crawlers in. It's off unless `BLOCK` names it. While it's on, a lookup also sends the visitor's `User-Agent` when it names a crawler, never a browser's. An address is looked up with at most four crawler agents an hour, or while its answers are cached when `CACHE_TTL` is longer, and a crawler it claims past those is judged spoofed if one before it was.
 
 ## Challenge instead of block
 

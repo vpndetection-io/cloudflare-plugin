@@ -323,6 +323,16 @@ describe('signals', () => {
         assert.equal(stub.lookups, 5);
     });
 
+    test('an address is looked up with at most four crawler agents an hour, answers cached or not', async () => {
+        stub = freshStub();
+        const mf = await worker({ BLOCK: 'vpn,spoofed', CACHE_TTL: '0' });
+        for (let i = 0; i < 8; i++) {
+            const forged = await visit(mf, CLEAN, '/', { headers: { 'User-Agent': `${GOOGLEBOT} ${i}` } });
+            assert.equal(forged.response.status, 403, `forged crawler ${i}`);
+        }
+        assert.equal(stub.agentsSent.filter((agent) => agent !== null).length, 4);
+    });
+
     test('a vouched-for crawler past its address\'s bound is still let through', async () => {
         stub = freshStub();
         const mf = await worker({ BLOCK: 'hosting,spoofed' });
