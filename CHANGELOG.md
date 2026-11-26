@@ -2,6 +2,13 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff.
 
+## 1.1.3 - 2026-11-26
+
+### Fixes
+
+- Bundle vpndetection 5.22.1 and build with wrangler 4.165.0 ([`197b5c5`](https://github.com/vpndetection-io/cloudflare-plugin/commit/197b5c5bfe98d976383e0d84066869b398f70ba3))
+- Name crawlers by the SDK's terms and keep an address's agents an hour ([`6c82195`](https://github.com/vpndetection-io/cloudflare-plugin/commit/6c821959c41f532f74a41de0212851375a2d70ae))
+
 ## 1.1.2 - 2026-11-25
 
 ### Fixes
