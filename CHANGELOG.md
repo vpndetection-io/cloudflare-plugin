@@ -2,6 +2,13 @@
 
 What each release changed for you, newest first. Each line is a commit's summary, linked to its full description and diff.
 
+## 1.1.4 - 2026-11-27
+
+### Fixes
+
+- Bundle vpndetection 5.23.0, which reads a free answer without the network's type ([`fb610e1`](https://github.com/vpndetection-io/cloudflare-plugin/commit/fb610e1f3337d286c4574e99cade44fbd0c7b64f))
+- Judge hosting by a paid answer's is_hosting alone ([`4c79c64`](https://github.com/vpndetection-io/cloudflare-plugin/commit/4c79c645e6c6003a8d1e969e17565c5ca59813f8))
+
 ## 1.1.3 - 2026-11-26
 
 ### Fixes
