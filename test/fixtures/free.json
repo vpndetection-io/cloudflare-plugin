@@ -4,7 +4,6 @@
   "is_vpn": false,
   "is_relay": false,
   "is_tor": false,
-  "is_bot": false,
   "is_anycast": false,
   "relay": {},
   "tor": {},
@@ -24,7 +23,6 @@
     "asn": 63949,
     "name": "Akamai Connected Cloud",
     "domain": "linode.com",
-    "type": "hosting",
     "prefix": "45.33.32.0/19",
     "country": "SG",
     "rpki_status": "valid"

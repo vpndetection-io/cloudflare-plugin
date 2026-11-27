@@ -23,7 +23,7 @@ const wrangler = await readFile(new URL('../wrangler.jsonc', import.meta.url), '
 const compatibilityDate = /"compatibility_date":\s*"([^"]+)"/.exec(wrangler)[1];
 
 // Answers as the API serves them: a paid plan's for a VPN server, and the free plan's, which has no
-// is_hosting and no bot detail. Each other answer is the paid one with every flag off but its own.
+// is_hosting, no bot detail and no network type. Each other answer is the paid one with every flag off but its own.
 const PAID = JSON.parse(await readFile(new URL('./fixtures/paid.json', import.meta.url), 'utf8'));
 const FREE = JSON.parse(await readFile(new URL('./fixtures/free.json', import.meta.url), 'utf8'));
 const NEUTRAL = Object.fromEntries(Object.entries(PAID).map(([k, v]) => {
@@ -43,7 +43,9 @@ const ANSWERS = {
     [RELAY]: { ...NEUTRAL, ip: RELAY, is_relay: true, is_hosting: true },
     '185.65.134.2': { ...PAID, ip: '185.65.134.2' },
     '45.33.32.156': FREE,
-    '34.82.1.1': { ...FREE, ip: '34.82.1.1', is_bot: true },
+    // Googlebot's address as the free plan answered it until spec 2026.11.26: the network's type, no is_bot.
+    '66.249.66.3': { ...FREE, ip: '66.249.66.3', asn: { ...FREE.asn, type: 'hosting' } },
+    '45.33.32.157': { ...NEUTRAL, ip: '45.33.32.157', is_hosting: true },
 };
 // Googlebot's network, vouched for, from an address the stub's agent check does not bear Googlebot out on.
 ANSWERS['66.249.66.2'] = { ...ANSWERS[CRAWLER], ip: '66.249.66.2' };
@@ -257,11 +259,21 @@ describe('signals', () => {
         assert.equal((await visit(relay, RELAY)).response.status, 403);
     });
 
-    test('on a free answer, hosting is the network type, sparing a known bot', async () => {
+    test('hosting is a paid answer\'s: a free one never matches it, nor refuses a crawler by its network', async () => {
         stub = freshStub();
         const mf = await worker({ BLOCK: 'hosting' });
-        assert.equal((await visit(mf, '45.33.32.156')).response.status, 403);
-        assert.equal((await visit(mf, '34.82.1.1')).response.status, 200);
+        assert.equal((await visit(mf, '45.33.32.156')).response.status, 200);
+        assert.equal((await visit(mf, '66.249.66.3', '/', { headers: { 'User-Agent': GOOGLEBOT } })).response.status, 200);
+        assert.equal((await visit(mf, '45.33.32.157')).response.status, 403);
+    });
+
+    test('a free answer without the network\'s type is still read', async () => {
+        stub = freshStub();
+        const mf = await worker({ BLOCK: 'vpn', FAIL_CLOSED: 'true' });
+        const { response, origin } = await visit(mf, '45.33.32.156');
+        assert.equal(response.status, 200);
+        assert.equal(forwarded(origin).error, undefined);
+        assert.equal(forwarded(origin).result.ip, '45.33.32.156');
     });
 
     test('a refusal names what was found, and asks to turn off only what a visitor can', async () => {
@@ -269,7 +281,7 @@ describe('signals', () => {
         const mf = await worker({ BLOCK: 'vpn,hosting' });
         const vpn = await visit(mf, VPN);
         assert.match(vpn.body, /connections through a VPN or from a hosting or cloud network\. Turn it off/);
-        const server = await visit(mf, '45.33.32.156');
+        const server = await visit(mf, '45.33.32.157');
         assert.match(server.body, /connections from a hosting or cloud network\.<\/p>/);
     });
 

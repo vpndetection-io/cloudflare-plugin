@@ -46,7 +46,7 @@ Your API key is the secret `VPNDETECTION_API_KEY`. The deploy asks for it, and y
 | `vpn` | Commercial and self-hosted VPN servers | Every plan |
 | `tor` | Tor exit and relay nodes | Every plan |
 | `relay` | iCloud Private Relay and company web gateways, mostly ordinary people | Every plan |
-| `hosting` | Servers at hosting and cloud providers, where bots and scripts run | Every plan, judged by the network an address belongs to on the free plan |
+| `hosting` | Servers at hosting and cloud providers, where bots and scripts run | A paid plan |
 | `pubproxy` | Open proxies anyone can connect through | A paid plan |
 | `resproxy` | Home connections rented out as proxies | A paid plan |
 | `mobproxy` | Phone connections rented out as proxies, whose addresses carriers share with ordinary customers | A paid plan |
@@ -56,7 +56,7 @@ Your API key is the secret `VPNDETECTION_API_KEY`. The deploy asks for it, and y
 
 A free account also tries every signal for a while; after that, a signal the [free plan](https://vpndetection.io/pricing) doesn't answer never matches, and the Worker logs that once. A privacy relay is judged as a relay alone, even where it runs on a hosting network.
 
-**Search engines' crawlers are never refused.** On a paid plan, an address whose bot operator vouches for it, such as Googlebot's, passes whatever it matched. On the free plan, `hosting` spares any address a known bot uses, since only a paid answer tells a verified crawler from one pretending.
+**Search engines' crawlers are never refused.** On a paid plan, an address whose bot operator vouches for it, such as Googlebot's, passes whatever it matched. The free plan answers none of the signals a crawler's address matches, such as `hosting`.
 
 **`spoofed` catches a forged crawler**, a scraper that calls itself Googlebot to get past rules that let crawlers in. It's off unless `BLOCK` names it. While it's on, a lookup also sends the visitor's `User-Agent` when it names a crawler, never a browser's. An address is looked up with at most four crawler agents an hour, or while its answers are cached when `CACHE_TTL` is longer, and a crawler it claims past those is judged spoofed if one before it was.
 

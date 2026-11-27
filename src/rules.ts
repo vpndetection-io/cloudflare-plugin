@@ -24,7 +24,6 @@ export interface Claim {
 
 // Read off the answer as served: the SDK names a member only once it is re-pinned to a spec that has it.
 const botAnswer = z.object({
-    is_bot: z.optional(z.boolean()),
     bot: z.nullish(z.object({ verified: z.optional(z.boolean()) })),
 });
 
@@ -44,7 +43,6 @@ export function judge(
             : { matched: false, signals: [] };
     }
     const bot = botAnswer.safeParse(result.raw);
-    const isBot = bot.success && bot.data.is_bot === true;
     const vouched = bot.success && bot.data.bot?.verified === true;
     const signals: string[] = [];
     for (const signal of settings.block) {
@@ -54,7 +52,7 @@ export function judge(
             }
             continue;
         }
-        const term = termFor(signal, result, isBot, settings.proxyMinHits);
+        const term = termFor(signal, result, settings.proxyMinHits);
         if (term === null) {
             continue;
         }
@@ -97,13 +95,11 @@ function spoofed(
 }
 
 /**
- * One signal's condition for this answer, or null where it cannot apply. A free answer has no
- * `is_hosting`, so hosting is read off the type of the network the address belongs to there, sparing
- * an address a bot is known to use, since only a paid answer says whether its operator vouches for
- * it. A relay is judged as a relay alone: iCloud Private Relay and company gateways run on hosting
- * networks.
+ * One signal's condition for this answer, or null where it cannot apply. Hosting is a paid answer's
+ * `is_hosting` alone: the free plan answers neither it nor the network's type. A relay is judged as a
+ * relay alone: iCloud Private Relay and company gateways run on hosting networks.
  */
-function termFor(signal: Signal, result: Result, isBot: boolean, minHits: number): BlockCondition | null {
+function termFor(signal: Signal, result: Result, minHits: number): BlockCondition | null {
     switch (signal) {
     case 'vpn':
         return { isVpn: true };
@@ -124,9 +120,6 @@ function termFor(signal: Signal, result: Result, isBot: boolean, minHits: number
     case 'hosting':
         if (result.isRelay === true) {
             return null;
-        }
-        if (result.isHosting === undefined && result.asn !== undefined) {
-            return isBot ? null : { asn: { type: 'hosting' } };
         }
         return { isHosting: true };
     case 'spoofed':
