@@ -76,8 +76,8 @@ export function judge(
     return { matched: signals.length > 0, signals: signals };
 }
 
-// Whether the crawler claimed is one this address does not bear out. A verdict comes with a paid plan or
-// the trial; a bogon is answered locally, with none. A vouched-for address never inherits an earlier one.
+// Whether the crawler claimed is one this address does not bear out. A verdict comes with a full answer; a
+// bogon is answered locally, with none. A vouched-for address never inherits an earlier one.
 function spoofed(
     result: Result, claim: Claim | undefined, vouched: boolean, warn: (message: string) => void,
 ): boolean {
